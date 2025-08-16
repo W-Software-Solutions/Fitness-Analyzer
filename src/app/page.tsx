@@ -118,7 +118,7 @@ export default function Home() {
     doc.setFontSize(16);
     doc.text("Personalized Plans", 20, y); y += 10;
     doc.setFontSize(12);
-    results?.plans.forEach((p: any, idx: number) => {
+  results?.plans.forEach((p: FitnessPlan, idx: number) => {
       console.log(p.title)
       doc.text(`Plans ${idx + 1}: ${p.title ?? "Not available"}`, 20, y); y += 8;
       console.log(p.exercise)
