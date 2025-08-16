@@ -38,7 +38,7 @@ export default function Home() {
   const [summary, setSummary] = useState<string>("");
   const [selectedPlan, setSelectedPlan] = useState<number>(0);
   const [loading, setLoading] = useState(false);
-  const [rawGemini, setRawGemini] = useState<string>("");
+  // Removed unused rawGemini state
 
   function handleImageUpload(e: ChangeEvent<HTMLInputElement>) {
     if (e.target.files && e.target.files[0]) {
@@ -54,10 +54,10 @@ export default function Home() {
       setBmi(null);
       setBodyFat(null);
       setMuscleMass(null);
-      setRawGemini("");
+  // Removed unused setRawGemini
       try {
         const response = await getGeminiFitnessPlan({ imageFile: image, height, weight });
-        setRawGemini(response);
+  // Removed unused setRawGemini
         // Parse Gemini response into a structured object
         const lines = response.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
         const parsed = {
@@ -68,7 +68,7 @@ export default function Home() {
           summary: "",
           plans: [] as FitnessPlan[],
         };
-        let currentPlan: FitnessPlan | null = null;
+  let currentPlan: FitnessPlan | null = null;
         for (const line of lines) {
           if (/^BMI[:\s]/i.test(line)) parsed.bmi = parseFloat(line.replace(/[^\d\.]/g, ""));
           else if (/^Body Fat/i.test(line)) parsed.bodyFat = parseFloat(line.replace(/[^\d\.]/g, ""));
@@ -91,7 +91,7 @@ export default function Home() {
         setSummary(parsed.summary || "Not available");
         setResults({
           bodyComposition: parsed.bodyComposition || "Not available",
-          plans: parsed.plans.filter(p => (p.title && p.title !== "Not available") || p.exercise || p.diet || p.sleep || p.avoid),
+          plans: parsed.plans.filter((p: FitnessPlan) => (p.title && p.title !== "Not available") || p.exercise || p.diet || p.sleep || p.avoid),
         });
       } catch (e: unknown) {
         setSummary("Error: " + (e instanceof Error ? e.message : String(e)));
@@ -277,7 +277,7 @@ export default function Home() {
                   {results.plans.length === 0 ? (
                     <div className="text-lg text-indigo-500 bg-indigo-50 rounded-xl p-6 shadow text-center">No personalized plans available. Please try again or adjust your inputs.</div>
                   ) : (
-                    results.plans.map((plan, idx) => (
+                    results.plans.map((plan: FitnessPlan, idx: number) => (
                       <div key={idx} className={`border-4 border-indigo-300 rounded-3xl p-8 bg-gradient-to-br from-white to-indigo-50 shadow-2xl hover:scale-105 transition-all duration-200 cursor-pointer relative ${selectedPlan === idx ? 'ring-4 ring-indigo-500' : ''}`}
                         onClick={() => setSelectedPlan(idx)}
                       >
