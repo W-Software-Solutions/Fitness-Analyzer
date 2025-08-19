@@ -2,6 +2,14 @@ import { GoogleGenAI } from "@google/genai";
 import base64js from 'base64-js';
 
 export async function getGeminiFitnessPlan({ imageFile, height, weight }: { imageFile: File; height: number; weight: number }): Promise<string> {
+  // Validate inputs
+  if (!imageFile) {
+    throw new Error("Image file is required");
+  }
+  if (!height || !weight || height <= 0 || weight <= 0) {
+    throw new Error("Valid height and weight are required");
+  }
+  
   const imageBase64: string = await new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => {
@@ -13,34 +21,96 @@ export async function getGeminiFitnessPlan({ imageFile, height, weight }: { imag
     reader.readAsArrayBuffer(imageFile);
   });
 
-  // Compose a rich, explicit prompt for Gemini
-  const prompt = `You are a health and fitness expert. Given the following user data:
-Height: ${height} cm
-Weight: ${weight} kg
+  // Compose a comprehensive prompt for maximum health insights
+  const prompt = `You are an advanced health and fitness AI expert. Analyze the provided image and user data to extract comprehensive health insights.
 
-Analyze the attached full-body image and provide a detailed, structured response EXACTLY in this format (use the same labels and include the colon):
+User Data:
+- Height: ${Number(height)} cm
+- Weight: ${Number(weight)} kg
 
-BMI: <number only>
-Body Fat Percentage: <number only>
-Muscle Mass Percentage: <number only>
-Body Composition: <short description>
-Summary: <one-liner summary>
-Plans:
-- Title: <plan name>
-  Exercise: <details>
-  Diet: <details>
-  Sleep: <details>
-  Avoid: <details>
-- Title: <plan name>
-  Exercise: <details>
-  Diet: <details>
-  Sleep: <details>
-  Avoid: <details>
+CRITICAL INSTRUCTION: You must respond with ONLY a valid JSON object. Do NOT use markdown code blocks. Do NOT include any text before or after the JSON. Start your response directly with { and end with }. The response must be parseable by JSON.parse().
 
-Rules:
-- Do not omit any field. If unknown, write "Not available".
-- Keep numeric values as numbers only (no % symbols).
-- Keep labels exactly as shown (e.g., "BMI:" not "B.M.I").`;
+Required JSON structure:
+
+{
+  "basicMetrics": {
+    "bmi": <number>,
+    "bmiCategory": "<underweight/normal/overweight/obese>",
+    "bodyFatPercentage": <number>,
+    "muscleMassPercentage": <number>,
+    "visceralFatLevel": <1-12>,
+    "metabolicAge": <number>
+  },
+  "bodyAnalysis": {
+    "overallPosture": "<description>",
+    "bodyShape": "<pear/apple/rectangle/hourglass/inverted triangle>",
+    "muscleDefinition": "<poor/fair/good/excellent>",
+    "bodyComposition": "<detailed analysis>",
+    "proportions": {
+      "shoulderToWaist": "<description>",
+      "waistToHip": "<description>"
+    }
+  },
+  "healthRisks": {
+    "cardiovascular": "<low/moderate/high>",
+    "diabetes": "<low/moderate/high>",
+    "jointHealth": "<good/fair/poor>",
+    "recommendations": ["<risk1>", "<risk2>"]
+  },
+  "fitnessLevel": {
+    "estimated": "<beginner/intermediate/advanced>",
+    "strengthIndicators": "<description>",
+    "flexibilityIndicators": "<description>",
+    "enduranceIndicators": "<description>"
+  },
+  "personalizedPlans": [
+    {
+      "planType": "Weight Loss" | "Muscle Building" | "General Fitness" | "Health Improvement",
+      "priority": "high" | "medium" | "low",
+      "duration": "<timeframe>",
+      "exercise": {
+        "cardio": "<detailed recommendations>",
+        "strength": "<detailed recommendations>",
+        "flexibility": "<detailed recommendations>",
+        "frequency": "<weekly schedule>"
+      },
+      "nutrition": {
+        "calories": <daily calories>,
+        "protein": "<grams and sources>",
+        "carbs": "<recommendations>",
+        "fats": "<recommendations>",
+        "hydration": "<water intake>",
+        "supplements": ["<supplement1>", "<supplement2>"]
+      },
+      "lifestyle": {
+        "sleep": "<hours and quality tips>",
+        "stress": "<management techniques>",
+        "recovery": "<rest day recommendations>"
+      },
+      "avoid": ["<item1>", "<item2>", "<item3>"]
+    }
+  ],
+  "progressTracking": {
+    "keyMetrics": ["<metric1>", "<metric2>", "<metric3>"],
+    "measurementFrequency": "<daily/weekly/monthly>",
+    "expectedResults": {
+      "week4": "<description>",
+      "week8": "<description>",
+      "week12": "<description>"
+    }
+  },
+  "summary": "<comprehensive overview>"
+}
+
+Analysis Guidelines:
+- Use image analysis for posture, body shape, muscle definition
+- Calculate BMI from height/weight
+- Estimate body fat % visually (ranges: Male 6-24%, Female 16-30%)
+- Provide realistic muscle mass estimates
+- Give 2-3 personalized plans based on apparent needs
+- Include specific, actionable recommendations
+- Use numbers only (no % symbols in numeric fields)
+- If any metric cannot be determined, use reasonable estimates based on visible factors`;
 
   const contents: { role: string; parts: Array<{ inlineData?: { mimeType: string; data: string }; text?: string }> }[] = [
     {
