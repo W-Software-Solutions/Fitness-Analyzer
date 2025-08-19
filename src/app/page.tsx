@@ -59,7 +59,17 @@ export default function Home() {
         const response = await getGeminiFitnessPlan({ imageFile: image, height, weight });
   // Removed unused setRawGemini
         // Parse Gemini response into a structured object
-        const lines = response.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+        console.debug('Gemini raw response:', response);
+        const rawLines = response.split(/\r?\n/);
+        const normalize = (s: string) => s
+          // strip bullets and markdown symbols
+          .replace(/^\s*[\-\*•\u2022]\s+/, '')
+          .replace(/^\s*>\s*/, '') // blockquote
+          .replace(/^#+\s*/, '') // heading marks
+          .replace(/^\*\*|\*\*$/g, '') // bold markers at ends
+          .replace(/^\*|\*$/g, '')
+          .trim();
+        const lines = rawLines.map(normalize).filter(Boolean);
         const parsed = {
           bmi: null as number | null,
           bodyFat: null as number | null,
@@ -68,21 +78,38 @@ export default function Home() {
           summary: "",
           plans: [] as FitnessPlan[],
         };
-  let currentPlan: FitnessPlan | null = null;
+        const numFrom = (s: string) => parseFloat(s.replace(/[^\d\.]/g, ""));
+        let currentPlan: FitnessPlan | null = null;
         for (const line of lines) {
-          if (/^BMI[:\s]/i.test(line)) parsed.bmi = parseFloat(line.replace(/[^\d\.]/g, ""));
-          else if (/^Body Fat/i.test(line)) parsed.bodyFat = parseFloat(line.replace(/[^\d\.]/g, ""));
-          else if (/^Muscle Mass/i.test(line)) parsed.muscleMass = parseFloat(line.replace(/[^\d\.]/g, ""));
-          else if (/^Body Composition[:\s]/i.test(line)) parsed.bodyComposition = line.replace(/^Body Composition[:\s]*/i, "");
-          else if (/^Summary[:\s]/i.test(line)) parsed.summary = line.replace(/^Summary[:\s]*/i, "");
-          else if (/^Plan/i.test(line) || /^Title[:\s]/i.test(line)) {
+          // Metrics
+          const bmiMatch = line.match(/^BMI\s*[:\-]\s*(.+)$/i);
+          if (bmiMatch) { parsed.bmi = numFrom(bmiMatch[1]); continue; }
+          const bfMatch = line.match(/^Body\s*Fat(?:\s*Percentage|\s*%|)\s*[:\-]\s*(.+)$/i);
+          if (bfMatch) { parsed.bodyFat = numFrom(bfMatch[1]); continue; }
+          const mmMatch = line.match(/^Muscle\s*Mass(?:\s*Percentage|\s*%|)\s*[:\-]\s*(.+)$/i);
+          if (mmMatch) { parsed.muscleMass = numFrom(mmMatch[1]); continue; }
+          const bcMatch = line.match(/^Body\s*Composition\s*[:\-]\s*(.+)$/i);
+          if (bcMatch) { parsed.bodyComposition = bcMatch[1].trim(); continue; }
+          const sumMatch = line.match(/^Summary\s*[:\-]\s*(.+)$/i);
+          if (sumMatch) { parsed.summary = sumMatch[1].trim(); continue; }
+
+          // Plans
+          const titleMatch = line.match(/^(?:Plan\s*\d*\s*|Title)\s*[:\-]\s*(.+)$/i) || line.match(/^Title\s*[:\-]\s*(.+)$/i);
+          if (titleMatch) {
             if (currentPlan) parsed.plans.push(currentPlan);
-            currentPlan = { title: "", exercise: "", diet: "", sleep: "", avoid: "" };
-            currentPlan.title = line.replace(/^Plan[:\s]*/i, "").replace(/^Title[:\s]*/i, "");
-          } else if (/^Exercise[:\s]/i.test(line) && currentPlan) currentPlan.exercise = line.replace(/^Exercise[:\s]*/i, "");
-          else if (/^Diet[:\s]/i.test(line) && currentPlan) currentPlan.diet = line.replace(/^Diet[:\s]*/i, "");
-          else if (/^Sleep[:\s]/i.test(line) && currentPlan) currentPlan.sleep = line.replace(/^Sleep[:\s]*/i, "");
-          else if (/^Avoid[:\s]/i.test(line) && currentPlan) currentPlan.avoid = line.replace(/^Avoid[:\s]*/i, "");
+            currentPlan = { title: titleMatch[1].trim(), exercise: "", diet: "", sleep: "", avoid: "" };
+            continue;
+          }
+          if (currentPlan) {
+            const exMatch = line.match(/^Exercise\s*[:\-]\s*(.+)$/i);
+            if (exMatch) { currentPlan.exercise = exMatch[1].trim(); continue; }
+            const dietMatch = line.match(/^Diet\s*[:\-]\s*(.+)$/i);
+            if (dietMatch) { currentPlan.diet = dietMatch[1].trim(); continue; }
+            const sleepMatch = line.match(/^Sleep\s*[:\-]\s*(.+)$/i);
+            if (sleepMatch) { currentPlan.sleep = sleepMatch[1].trim(); continue; }
+            const avoidMatch = line.match(/^Avoid\s*[:\-]\s*(.+)$/i);
+            if (avoidMatch) { currentPlan.avoid = avoidMatch[1].trim(); continue; }
+          }
         }
         if (currentPlan) parsed.plans.push(currentPlan);
         setBmi(parsed.bmi ?? null);
