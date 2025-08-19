@@ -18,11 +18,11 @@ export async function getGeminiFitnessPlan({ imageFile, height, weight }: { imag
 Height: ${height} cm
 Weight: ${weight} kg
 
-Analyze the attached full-body image and provide a detailed, structured response in the following format:
+Analyze the attached full-body image and provide a detailed, structured response EXACTLY in this format (use the same labels and include the colon):
 
-BMI: <number>
-Body Fat Percentage: <number>
-Muscle Mass Percentage: <number>
+BMI: <number only>
+Body Fat Percentage: <number only>
+Muscle Mass Percentage: <number only>
 Body Composition: <short description>
 Summary: <one-liner summary>
 Plans:
@@ -37,7 +37,10 @@ Plans:
   Sleep: <details>
   Avoid: <details>
 
-Respond with all fields filled and avoid leaving any field blank. If you cannot infer a value, provide your best estimate or say "Not available".`;
+Rules:
+- Do not omit any field. If unknown, write "Not available".
+- Keep numeric values as numbers only (no % symbols).
+- Keep labels exactly as shown (e.g., "BMI:" not "B.M.I").`;
 
   const contents: { role: string; parts: Array<{ inlineData?: { mimeType: string; data: string }; text?: string }> }[] = [
     {
